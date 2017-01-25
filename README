@@ -3,6 +3,7 @@ Please in file openwrt.mk specify WRTP path to LEDE source and do make mips.
 
 Then transfer mtd_lowlevel.ko to target mips system and do the folowing
 commands for reset BAD blocks on /dev/mtd6 nand:
+
   insmod /tmp/mtd_lowlevel.ko mtd_index=6
   mtd erase /dev/mtd6
   reboot
