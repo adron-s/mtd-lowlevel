@@ -1,0 +1,155 @@
+#include <linux/kernel.h>
+#include <linux/spinlock.h>
+#include <linux/kthread.h>
+#include <linux/types.h>
+#include <linux/module.h>
+#include <net/ip.h>
+#include <net/tcp.h>
+#include <net/udp.h>
+#include <linux/pkt_sched.h>
+#include <linux/netfilter/x_tables.h>
+#include <linux/netfilter/xt_tcpudp.h>
+#include <linux/netfilter_ipv4/ip_tables.h>
+#include <linux/proc_fs.h>
+#include <linux/time.h>
+#include "debug.h"
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Sergey Sergeev <sergey.sergeev@yapic.net>");
+MODULE_DESCRIPTION("kernel test");
+
+#define DEBUG 1
+
+struct task_struct * thr1;
+struct task_struct * thr2;
+struct task_struct * thr3;
+struct task_struct * thr4;
+
+struct baobab {
+  void *next;
+  void *pred;
+  unsigned int data;
+};
+
+struct baobab bao_arr[4];
+void *cur_bao=&bao_arr[0];
+
+unsigned long z=0;
+spinlock_t z_lock = SPIN_LOCK_UNLOCKED;
+
+//*********************************************************
+void init_bao_ring(struct baobab *arr, int len){
+  int a;
+  for(a=0; a<len-1; a++){
+    arr[a].next=&arr[a+1]; //init next ptr
+    arr[a].data=0;
+    arr[a+1].pred=&arr[a]; //init pred ptr
+  }
+  //первый элемент
+  arr[0].pred=&arr[len-1];
+  //последний элемент массива arr
+  arr[len-1].next=&arr[0];
+  arr[len-1].data=0;
+}//--------------------------------------------------------
+
+//*********************************************************
+//static inline int atomic_next(unsigned long *v){
+//}//--------------------------------------------------------
+
+//*********************************************************
+static int thrX_fn(void *data){
+  char *name=(char*)(data);
+  unsigned long a;
+  unsigned long takes=jiffies;
+  void *old_bao;
+  void *new_bao;
+  void *ret;
+
+  printk(KERN_DEBUG "%s STARTED at %lu..cpu=%d", name, takes, smp_processor_id());
+//  for(a=0; a<100000000; a++){
+    //asm volatile(LOCK_PREFIX "movl (%0),%0" : "+r"(cur_bao)::"memory");
+//    asm volatile(LOCK_PREFIX "movl (%1),%1" : "+m"(cur_bao), "+r"(cur_bao) : : "memory");
+//    cur_bao->data++;
+//    asm volatile(LOCK_PREFIX "movl $1, %0"
+//		     : "+m" (cur_bao));
+//    asm volatile(LOCK_PREFIX "addl $1,%0" : "+m"(z) : : "memory");
+//    spin_lock_bh(&z_lock);
+//    asm volatile("addl $1,%0" : "+m"(z) : : "memory");
+//    spin_unlock_bh(&z_lock);
+//    while(1){
+      old_bao=cur_bao;
+      new_bao=((struct baobab*)old_bao)->next;
+      printk(KERN_DEBUG "st1:\n"
+                        "cur_bao=0x%x\n"
+                        "old_bao=0x%x\n"
+                        "new_bao=0x%x\n",
+                        (unsigned int)cur_bao,
+                        (unsigned int)old_bao,
+                        (unsigned int)new_bao);
+      /* атомарно проверяет что содержимое ячейки памяти &cur_bao все еще содержит значение old_bao
+         и если это так (а вероятность этого лучшего случая крайне высока) {
+            то записывает в &cur_bao значение из new_bao и возвращает старое значение cur_bao == old_bao
+         }
+         если же проверка неудачна (коллизия с другим процессором) {
+            то вернет текущее новое значение cur_bao != old_bao
+         }
+      */
+//      cur_bao=(void*)0xF0F0F0F0; //коллизия !!! другой проц поменял данные !!!
+      ret=cmpxchg(&cur_bao, old_bao, new_bao);
+      printk(KERN_DEBUG "st2!!!:\n"
+                        "cur_bao=0x%x\n"
+                        "old_bao=0x%x\n"
+                        "new_bao=0x%x\n"
+                        "ret=0x%x\n",
+                        (unsigned int)cur_bao,
+                        (unsigned int)old_bao,
+                        (unsigned int)new_bao,
+                        (unsigned int)ret);
+      if(ret==old_bao){printk(KERN_DEBUG "eeeee!!!\n");} // успех-выход из цикла
+//      if(old_bao==new_bao){break;} // успех-выход из цикла
+//    }
+//    asm volatile(LOCK_PREFIX "addl $1,%0" : "+m"( ((struct baobab *)((struct baobab*)old_bao)->pred)->data) : : "memory");
+//  }
+  printk(KERN_DEBUG "%s STOPED at %lu..taked=%lu", name, jiffies, jiffies-takes);
+  return 0;
+}//--------------------------------------------------------
+
+//*********************************************************
+//выполняется при загрузке модуля
+static int __init test_m_module_init(void){
+  init_bao_ring(bao_arr, sizeof(bao_arr)/sizeof(struct baobab));
+
+  thr1=kthread_create(thrX_fn, (void*)("thr1"), "thr%d", 1);
+  kthread_bind(thr1, 0); //бинд к процу
+
+  thr2=kthread_create(thrX_fn, (void*)("thr2"), "thr%d", 2);
+  kthread_bind(thr2, 1); //бинд к процу
+
+  thr3=kthread_create(thrX_fn, (void*)("thr3"), "thr%d", 3);
+  kthread_bind(thr3, 2); //бинд к процу
+
+  thr4=kthread_create(thrX_fn, (void*)("thr4"), "thr%d", 4);
+  kthread_bind(thr4, 3); //бинд к процу
+  
+
+  wake_up_process(thr1); //запускаем поток
+//  wake_up_process(thr2); //запускаем поток
+//  wake_up_process(thr3); //запускаем поток
+ // wake_up_process(thr4); //запускаем поток
+// printk(KERN_DEBUG "!%s!\n", LOCK_PREFIX);
+
+  return 0;
+}//--------------------------------------------------------
+
+//*********************************************************    
+//выполняется при выгрузке модуля
+static void __exit test_m_module_exit (void){
+  int a;
+//  printk(KERN_DEBUG "z=%lu\n", z);
+  for(a=0; a<sizeof(bao_arr)/sizeof(struct baobab); a++){
+    printk(KERN_DEBUG "z=%d\n", bao_arr[a].data);
+  }
+}//--------------------------------------------------------
+
+module_init(test_m_module_init);
+module_exit(test_m_module_exit);
