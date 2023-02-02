@@ -26,16 +26,12 @@
 #include <linux/preempt.h>
 #include <linux/mtd/rawnand.h>
 
-#define DEBUG 1
-#include "debug.h"
-
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Sergey Sergeev <sergey.sergeev@yapic.net>");
 MODULE_DESCRIPTION("kernel test");
 
 //*********************************************************
 static int __init test_m_module_init(void){
-	int a;
 	struct mtd_info *mtd;
 	struct mtd_info *master = NULL;
 	struct nand_chip *chip = NULL;
@@ -50,7 +46,7 @@ static int __init test_m_module_init(void){
 	pr_info("%s: OWL: mtd->name: %s, mtd->parent: 0x%px\n", __func__, mtd->name, mtd->parent);
 
 	//this code allows you to remove previously marked bad blocks
-	if (0) {
+	if (1) {
 		//get the real mtd_info in which all fields are filled
 		master = mtd_get_master(mtd);
 		//master is already a real mtd_info of our device and not a fake for the public what was the result of get_mtd_device
