@@ -33,7 +33,6 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Sergey Sergeev <sergey.sergeev@yapic.net>");
 MODULE_DESCRIPTION("kernel test");
 
-
 //*********************************************************
 static int __init test_m_module_init(void){
 	int a;

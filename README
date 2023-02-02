@@ -1,0 +1,9 @@
+This is a kernel based hack for reset soft BAD blocks on NAND devices.
+Please in file openwrt.mk specify WRTP path to OpenWrt source and do make mips.
+
+Then transfer the test_m.ko to target mips system and do the folowing
+commands for reset BAD blocks on /dev/mtdX nand:
+
+  insmod /tmp/test_m.ko
+  mtd erase /dev/mtdX
+  reboot
