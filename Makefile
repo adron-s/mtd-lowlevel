@@ -1,0 +1,42 @@
+ifeq ($(ARCH),x86_64)
+  export KERNEL_DIR = /lib/modules/$(shell uname -r)/build
+#  export KERNEL_DIR = /usr/src/linux-4.19.183-uni-col
+else ifdef DEVICE
+ include $(PWD)/openwrt.mk
+endif
+
+# standard flags for module builds
+EXTRA_CFLAGS += -DLINUX -D__KERNEL__ -DMODULE -O2 -pipe -Wall
+
+TARGET=test_m.o
+obj-m:=$(TARGET)
+test_m-objs:=test_main.o
+
+TARGETS := $(obj-m:.o=.ko)
+ccflags-y += -Wall
+
+all:
+	make x86
+#	make arm
+#	make mips
+#	make ramips
+
+arch:
+	echo "!!! $(DEVICE) !!! $(ARCH) !!! $(KERNEL_DIR) !!!"
+	$(MAKE) -C $(KERNEL_DIR) M=$$PWD
+
+x86:
+	$(MAKE) arch ARCH=x86_64 DEVICE=x86_native
+
+mips:
+	$(MAKE) arch ARCH=mips DEVICE=ath79-mikrotik
+
+ramips:
+	$(MAKE) arch ARCH=mips DEVICE=ramips-mt7621
+
+arm:
+	$(MAKE) arch ARCH=arm DEVICE=rb3011
+
+clean:
+		rm -f .*.cmd *.mod.c *.mod *.ko *.o *~ core $(TARGETS)
+		rm -Rf .tmp_versions built-in.a *.symvers *.order .tmp_*
