@@ -1,7 +1,8 @@
 #cross compile для mips
 
 #путь где лежит buildroot openwrt
-WRTP = /home/prog/openwrt/2023-openwrt/openwrt-2023
+#WRTP = /home/prog/openwrt/2023-openwrt/openwrt-2023
+WRTP = /home/prog/openwrt/openwrt-latest/openwrt
 
 #определяемся с типом устройства 
 ifeq ($(DEVICE),ramips-mt7621)
@@ -37,7 +38,7 @@ export STAGING_DIR = $(WRTP)/staging_dir/$(TOOLCHAIN_DIR)
 #указываем какой префикс юзать перед сажем gcc или ldd(то есть какое имя у файла бинарника компилятора или линкера)
 export CROSS_COMPILE = $(CROSS_COMPILE_PREFIX)-openwrt-linux-
 #путь к исходнику ядра
-KERNEL_DIR = $(WRTP)/build_dir/$(TARGET_DIR)/$(KERNEL_SUB_DIR)/linux-5.10.146
+KERNEL_DIR = $(WRTP)/build_dir/$(TARGET_DIR)/$(KERNEL_SUB_DIR)/linux-5.10.161
 #где лежат бинарники компилятора(gcc, ldd)
 PATH := $(PATH):$(STAGING_DIR)/bin
 #указываем архитекруту

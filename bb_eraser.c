@@ -30,26 +30,30 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Sergey Sergeev <sergey.sergeev@yapic.net>");
 MODULE_DESCRIPTION("kernel test");
 
+static char *part = "kernel";
+module_param(part, charp, 0);
+
 //*********************************************************
 static int __init test_m_module_init(void){
 	struct mtd_info *mtd;
-	struct mtd_info *master = NULL;
 	struct nand_chip *chip = NULL;
-	const char part[ ] = "kernel";
-	u32 offset = 0, mb_count = 0;
-	u32 max_offset = 0x003c0000;
+	struct mtd_info *master = NULL;
 
 	mtd = get_mtd_device_nm(part);
-	if (IS_ERR(mtd))
+	if (IS_ERR(mtd)) {
+		pr_err("can't find mtd partition: %s\n", part);
 		return -ENODEV;
+	}
 
-	pr_info("%s: OWL: mtd->name: %s, mtd->parent: 0x%px\n", __func__, mtd->name, mtd->parent);
+	pr_info("%s: mtd->name: %s, mtd->parent: 0x%px\n", __func__,
+		mtd->name, mtd->parent);
 
-	//this code allows you to remove previously marked bad blocks
+	//this code allows you to remove a previously marked bad blocks
 	if (1) {
 		//get the real mtd_info in which all fields are filled
 		master = mtd_get_master(mtd);
-		//master is already a real mtd_info of our device and not a fake for the public what was the result of get_mtd_device
+		/* master is already a real mtd_info of our device and not a fake
+			 for the public - what was the result of get_mtd_device */
 		chip = mtd_to_nand(master);
 		pr_info("chip = 0x%p\n", chip);
 		if (chip == NULL) {
@@ -73,12 +77,15 @@ static int __init test_m_module_init(void){
 
 	//this code allows you to create(mark) the new bad blocks
 	if (0) {
+		u32 offset = 0, mb_count = 0;
+		u32 max_offset = 0x003c0000;
+
 		while (offset < max_offset) {
 			mtd_block_markbad(mtd, offset);
 			pr_info("Mark block 0x%x as BAD\n", offset);
-			offset += 0x20000 * 4;
-			if (mb_count++ > 5)
-				break;
+			offset += 0x20000;
+			/* if (mb_count++ > 5)
+				break; */
 		}
 	}
 

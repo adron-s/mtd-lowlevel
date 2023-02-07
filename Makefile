@@ -8,9 +8,8 @@ endif
 # standard flags for module builds
 EXTRA_CFLAGS += -DLINUX -D__KERNEL__ -DMODULE -O2 -pipe -Wall
 
-TARGET=test_m.o
+TARGET=bb_eraser.o
 obj-m:=$(TARGET)
-test_m-objs:=test_main.o
 
 TARGETS := $(obj-m:.o=.ko)
 ccflags-y += -Wall
